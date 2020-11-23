@@ -148,30 +148,6 @@ class _HomePageState extends State<HomePage> {
                                           },
                                         );
                                       }).toList())
-                                  //   children: [
-                                  //     DeskWidget(
-                                  //       offset: offset,
-                                  //       onPanUpdate: (detail) {
-                                  //         var dx = offset.dx + detail.delta.dx;
-                                  //         var dy = offset.dy + detail.delta.dy;
-                                  //         var maxHeight = imagesize.height - 50;
-                                  //         var maxWidth = imagesize.width - 50;
-                                  //         print(
-                                  //             "onmove : dx: ${dx} - dy: ${dy} - maxWidth: ${maxWidth} maxHeight: ${maxHeight}");
-                                  //         setState(() {
-                                  //           offset = getOffset(
-                                  //               dx: dx,
-                                  //               dy: dy,
-                                  //               maxHeight: maxHeight,
-                                  //               maxWidth: maxWidth);
-                                  //         });
-                                  //       },
-                                  //       ontap: () {
-                                  //         print("tap ne");
-                                  //       },
-                                  //     ),
-                                  //   ],
-                                  // ),
                                 ],
                               ))
                           : Container(
