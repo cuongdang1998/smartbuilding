@@ -45,11 +45,6 @@ class _HomePageState extends State<HomePage> {
     return _image;
   }
 
-  @override
-  void initState() {
-    super.initState();
-  }
-
   getImageSize() {
     RenderBox render = imagekey.currentContext.findRenderObject();
     imagesize = render.size;
