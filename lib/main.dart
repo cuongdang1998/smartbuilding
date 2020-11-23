@@ -313,30 +313,30 @@ class DeskWidget extends StatelessWidget {
   }
 }
 
-class DraggableWidget extends StatelessWidget {
-  final Offset offset;
-
-  DraggableWidget({Key key, this.offset}) : super(key: key);
-  @override
-  Widget build(BuildContext context) {
-    return Draggable(
-      childWhenDragging: Container(
-        height: 50,
-        width: 50,
-        decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(color: Colors.red, width: 2)),
-        child: Image.asset("assets/images/desk.png"),
-      ),
-      feedback: Container(
-        height: 50,
-        width: 50,
-        decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(color: Colors.red, width: 2)),
-        child: Image.asset("assets/images/desk.png"),
-      ),
-      onDragEnd: (details) {},
-    );
-  }
-}
+// class DraggableWidget extends StatelessWidget {
+//   final Offset offset;
+//
+//   DraggableWidget({Key key, this.offset}) : super(key: key);
+//   @override
+//   Widget build(BuildContext context) {
+//     return Draggable(
+//       childWhenDragging: Container(
+//         height: 50,
+//         width: 50,
+//         decoration: BoxDecoration(
+//             color: Colors.white,
+//             border: Border.all(color: Colors.red, width: 2)),
+//         child: Image.asset("assets/images/desk.png"),
+//       ),
+//       feedback: Container(
+//         height: 50,
+//         width: 50,
+//         decoration: BoxDecoration(
+//             color: Colors.white,
+//             border: Border.all(color: Colors.red, width: 2)),
+//         child: Image.asset("assets/images/desk.png"),
+//       ),
+//       onDragEnd: (details) {},
+//     );
+//   }
+// }
