@@ -1,12 +1,22 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 import 'dart:io';
 import 'dart:ui';
 
+import 'package:file_picker_cross/file_picker_cross.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:window_size/window_size.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    setWindowMinSize(Size(1000, 600));
+    setWindowMaxSize(Size.infinite);
+  }
   runApp(MyApp());
 }
 
@@ -32,22 +42,59 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   File _image;
-  final _picker = ImagePicker();
+  Size imagesize;
+  double maxWidth;
+  double maxHeight;
   GlobalKey imagekey = GlobalKey();
   GlobalKey deskkey = GlobalKey();
   StreamController streamController = StreamController<File>.broadcast();
-  List<Offset> offsets = [];
-  Size imagesize;
-  Offset offset;
+  List<Offset> rateOffsets = [
+    // Offset(1 / 5, 2 / 3),
+    // Offset(1 / 3, 2 / 9),
+    // Offset(1 / 10, 1 / 2),
+    // Offset(1 / 5, 11 / 20),
+    // Offset(2 / 3, 5 / 6),
+    // Offset(5 / 9, 3 / 10),
+    // Offset(2 / 9, 13 / 21),
+    // Offset(13 / 29, 13 / 20),
+    // Offset(1, 1),
+  ];
+  List<Offset> realOffsets = [];
   Future _getImageFromTablet() async {
-    final image = await _picker.getImage(source: ImageSource.gallery);
-    _image = File(image.path);
+    final image = await ImagePicker().getImage(source: ImageSource.gallery);
+    if (image != null) {
+      _image = File(image?.path);
+    }
     return _image;
+  }
+
+  Future _getImageFromDesktop() async {
+    try {
+      FilePickerCross file =
+          await FilePickerCross.importFromStorage(type: FileTypeCross.image);
+      if (file != null) {
+        _image = File(file.path);
+      }
+      return _image;
+    } catch (ex) {
+      print(ex.toString());
+    }
   }
 
   getImageSize() {
     RenderBox render = imagekey.currentContext.findRenderObject();
     imagesize = render.size;
+    maxWidth = imagesize.width - 50;
+    maxHeight = imagesize.height - 50;
+    setState(() {
+      convertOffet();
+    });
+  }
+
+  convertOffet() {
+    realOffsets = rateOffsets
+        .map((e) => Offset(e.dx * (maxWidth), e.dy * (maxHeight)))
+        .toList();
   }
 
   Offset getOffset({double dx, double dy, double maxWidth, double maxHeight}) {
@@ -84,185 +131,210 @@ class _HomePageState extends State<HomePage> {
   }
 
   @override
+  void initState() {
+    WidgetsFlutterBinding.ensureInitialized();
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      setWindowMinSize(Size(1000, 600));
+      setWindowMaxSize(Size.infinite);
+    }
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => getImageSize());
+  }
+
+  @override
   Widget build(BuildContext context) {
     var size = MediaQuery.of(context).size;
-    return SafeArea(
-      child: Scaffold(
-        body: StreamBuilder<File>(
-            stream: streamController.stream,
-            builder: (context, snapshot) {
-              // print("snappshot : ${snapshot.data}");
-              return Container(
-                padding: EdgeInsets.all(50),
-                child: Column(
-                  children: [
-                    Expanded(
-                      child: snapshot.hasData
-                          ? Container(
-                              key: imagekey,
-                              child: Stack(
-                                clipBehavior: Clip.none,
-                                children: [
-                                  Container(
-                                    height: double.infinity,
-                                    width: size.width,
-                                    child: Image.file(
-                                      snapshot.data,
-                                      fit: BoxFit.fill,
-                                    ),
-                                  ),
-                                  Stack(
-                                      clipBehavior: Clip.none,
-                                      children:
-                                          offsets.asMap().entries.map((o) {
-                                        return DeskWidget(
-                                          offset: Offset(offsets[o.key].dx,
-                                              offsets[o.key].dy),
-                                          onPanUpdate: (detail) {
-                                            var dx = offsets[o.key].dx +
-                                                detail.delta.dx;
-                                            var dy = offsets[o.key].dy +
-                                                detail.delta.dy;
-                                            var maxHeight =
-                                                imagesize.height - 50;
-                                            var maxWidth = imagesize.width - 50;
-                                            print(
-                                                "onmove : dx: ${dx} - dy: ${dy} - maxWidth: ${maxWidth} maxHeight: ${maxHeight}");
-                                            setState(() {
-                                              offsets[o.key] = getOffset(
-                                                  dx: dx,
-                                                  dy: dy,
-                                                  maxHeight: maxHeight,
-                                                  maxWidth: maxWidth);
-                                            });
-                                          },
-                                          ontap: () {
-                                            print(
-                                                "okey: ${o.key} offset: ${offsets[o.key].dx} - ${offsets[o.key].dy}");
-                                            // offsets.indexOf(e);
-                                          },
-                                        );
-                                      }).toList())
-                                ],
-                              ))
-                          : Container(
-                              width: size.width,
-                              child: GestureDetector(
-                                onTap: () async {
-                                  if (Platform.isIOS || Platform.isAndroid) {
-                                    print("tablet");
-                                    streamController.sink
-                                        .add(await _getImageFromTablet());
-                                    offsets.clear();
-                                    WidgetsBinding.instance
-                                        .addPostFrameCallback(
-                                            (_) => getImageSize());
-                                  } else {
-                                    print("desktop");
-                                    // _getImageFromDesktop();
-                                  }
-                                },
-                                child: Container(
-                                  child: Icon(
-                                    Icons.image,
-                                    size: 300,
-                                  ),
+    WidgetsBinding.instance.addPostFrameCallback((_) => getImageSize());
+    return Scaffold(
+      body: StreamBuilder<File>(
+          stream: streamController.stream,
+          builder: (context, snapshot) {
+            return Container(
+              padding: EdgeInsets.all(50),
+              child: Column(
+                children: [
+                  Expanded(
+                    key: imagekey,
+                    child: snapshot.hasData
+                        ? Container(
+                            child: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Container(
+                                height: double.infinity,
+                                width: size.width,
+                                decoration: BoxDecoration(
+                                    border: Border.all(
+                                        color: Colors.red, width: 1)),
+                                child: Image.file(
+                                  snapshot.data,
+                                  fit: BoxFit.fill,
+                                ),
+                              ),
+                              Stack(clipBehavior: Clip.none, children: [
+                                ...realOffsets.asMap().entries.map((o) {
+                                  return DeskWidget(
+                                    offset: o.value,
+                                    onPanUpdate: (detail) {
+                                      var dx = realOffsets[o.key].dx +
+                                          detail.delta.dx;
+                                      var dy = realOffsets[o.key].dy +
+                                          detail.delta.dy;
+                                      print(
+                                          "onmove : dx: ${dx} - dy: ${dy} - maxWidth: ${maxWidth} maxHeight: ${maxHeight}");
+                                      setState(() {
+                                        var offset = getOffset(
+                                            dx: dx,
+                                            dy: dy,
+                                            maxHeight: maxHeight,
+                                            maxWidth: maxWidth);
+                                        realOffsets[o.key] = offset;
+                                        rateOffsets[o.key] = Offset(
+                                            offset.dx / maxWidth,
+                                            offset.dy / maxHeight);
+                                      });
+                                    },
+                                    ontap: () {
+                                      print(
+                                          "okey: ${o.key} offset: ${realOffsets[o.key].dx} - ${realOffsets[o.key].dy}");
+                                      buildShowDialog(context, o);
+                                    },
+                                    onLongPress: () {
+                                      realOffsets.removeAt(o.key);
+                                      rateOffsets.removeAt(o.key);
+                                      setState(() {});
+                                    },
+                                  );
+                                }).toList(),
+                              ]),
+                            ],
+                          ))
+                        : Container(
+                            width: size.width,
+                            child: GestureDetector(
+                              onTap: () async {},
+                              child: Container(
+                                child: Icon(
+                                  Icons.image,
+                                  size: 300,
                                 ),
                               ),
                             ),
-                    ),
-                    Container(
-                      height: size.height * .2,
-                      width: size.width,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          /// Use gesture detector
-                          // GestureDetector(
-                          //     onPanUpdate: (details) {
-                          //       setState(() {
-                          //         if (snapshot.hasData) {
-                          //           if (details.globalPosition >=
-                          //                   Offset(50, 50) &&
-                          //               details.globalPosition <=
-                          //                   Offset(imagesize.width,
-                          //                       imagesize.height)) {
-                          //             offset = details.globalPosition;
-                          //             // offsets.add(offset);
-                          //             print(
-                          //                 "end offset: ${details.globalPosition}");
-                          //           }
-                          //         }
-                          //       });
-                          //     },
-                          //     onPanEnd: (end) {
-                          //       setState(() {
-                          //         offsets.add(offset);
-                          //       });
-                          //     },
-                          //     child: buildDeskItem()),
-
-                          /// Use draggable
-                          Draggable(
-                            childWhenDragging: buildDeskItem(),
-                            child: buildDeskItem(),
-                            feedback: buildDeskItem(),
-                            onDragEnd: (DraggableDetails details) {
-                              setState(() {
-                                if (snapshot.hasData) {
-                                  if (details.offset >= Offset(50, 50) &&
-                                      details.offset <=
-                                          Offset(imagesize.width - 50,
-                                              imagesize.height - 50)) {
-                                    offsets.add(details.offset);
-                                    print("end offset: ${details.offset}");
-                                  }
+                          ),
+                  ),
+                  Container(
+                    height: size.height * .2,
+                    width: size.width,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        /// Use draggable
+                        Draggable(
+                          childWhenDragging: buildDeskItem(),
+                          child: buildDeskItem(),
+                          feedback: buildDeskItem(),
+                          onDragEnd: (DraggableDetails details) {
+                            developer.log('build details ${details.offset}',
+                                name: 'Main');
+                            setState(() {
+                              if (snapshot.hasData) {
+                                if (details.offset >= Offset(50, 50) &&
+                                    details.offset <=
+                                        Offset(imagesize.width,
+                                            imagesize.height)) {
+                                  // Add offset to real offset list
+                                  //Must delete Offset(50,50) because padding(50)
+                                  realOffsets
+                                      .add(details.offset - Offset(50, 50));
+                                  print("realOffsets: ${realOffsets}");
+                                  // Add offset to rate offset list
+                                  // Minus 50 because the width of desk is 50
+                                  //And must convert to rate offset.
+                                  rateOffsets.add(Offset(
+                                      (details.offset.dx - 50) / (maxWidth),
+                                      (details.offset.dy - 50) / (maxHeight)));
+                                  print("rateOffsets: ${rateOffsets}");
+                                  print("end offset: ${details.offset}");
                                 }
-                              });
-                            },
-                            dragAnchor: DragAnchor.child,
-                          ),
-                          RaisedButton(
-                            onPressed: () async {
-                              if (Platform.isIOS || Platform.isAndroid) {
-                                print("tablet");
-                                streamController.sink
-                                    .add(await _getImageFromTablet());
-                                offsets.clear();
-                                WidgetsBinding.instance.addPostFrameCallback(
-                                    (_) => getImageSize());
-                              } else {
-                                print("desktop");
-                                // _getImageFromDesktop();
                               }
-                              print("size target ${imagesize}");
-                            },
-                            child: Text(
-                              "Load",
-                              style: TextStyle(color: Colors.white),
-                            ),
-                            color: Colors.blue,
+                            });
+                          },
+                          dragAnchor: DragAnchor.child,
+                        ),
+                        RaisedButton(
+                          onPressed: () async {
+                            File img;
+                            if (kIsWeb) {
+                              img = await _getImageFromDesktop();
+                            } else if (Platform.isIOS || Platform.isAndroid) {
+                              img = await _getImageFromTablet();
+                            } else {
+                              img = await _getImageFromDesktop();
+                            }
+                            if (img != null) {
+                              streamController.sink.add(img);
+                              convertOffet();
+                              print("Image size: ${imagesize}");
+                            }
+                          },
+                          child: Text(
+                            "Load",
+                            style: TextStyle(color: Colors.white),
                           ),
-                          RaisedButton(
-                            onPressed: () async {
-                              offsets.clear();
-                              setState(() {});
-                            },
-                            child: Text(
-                              "Clear",
-                              style: TextStyle(color: Colors.white),
-                            ),
-                            color: Colors.blue,
+                          color: Colors.blue,
+                        ),
+                        RaisedButton(
+                          onPressed: () {
+                            realOffsets.clear();
+                            rateOffsets.clear();
+                            setState(() {});
+                          },
+                          child: Text(
+                            "Clear",
+                            style: TextStyle(color: Colors.white),
                           ),
-                        ],
-                      ),
+                          color: Colors.blue,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+    );
+  }
+
+  Future buildShowDialog(BuildContext context, MapEntry<int, Offset> o) {
+    return showDialog(
+        context: context,
+        barrierColor: Colors.transparent,
+        builder: (context) {
+          return Center(
+            child: Container(
+              height: 200,
+              width: 200,
+              decoration: BoxDecoration(
+                  color: Colors.white, borderRadius: BorderRadius.circular(20)),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text("${o.key}"),
+                    Text(
+                      "real offset: ${num.parse(realOffsets[o.key].dx.toStringAsFixed(2))} - ${num.parse(realOffsets[o.key].dy.toStringAsFixed(2))}",
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      "rate offset: ${num.parse(rateOffsets[o.key].dx.toStringAsFixed(2))} - ${num.parse(rateOffsets[o.key].dy.toStringAsFixed(2))}",
+                      style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
-              );
-            }),
-      ),
-    );
+              ),
+            ),
+          );
+        });
   }
 
   Container buildDeskItem() {
@@ -270,7 +342,7 @@ class _HomePageState extends State<HomePage> {
       height: 50,
       width: 50,
       decoration: BoxDecoration(
-          color: Colors.white, border: Border.all(color: Colors.red, width: 2)),
+          color: Colors.white, border: Border.all(color: Colors.red, width: 1)),
       child: Image.asset("assets/images/desk.png"),
     );
   }
@@ -281,11 +353,13 @@ class DeskWidget extends StatelessWidget {
     Key key,
     this.ontap,
     this.onPanUpdate,
+    this.onLongPress,
     this.offset,
   }) : super(key: key);
-  final Offset offset;
   final Function ontap;
   final Function(DragUpdateDetails) onPanUpdate;
+  final Function onLongPress;
+  final Offset offset;
 
   @override
   Widget build(BuildContext context) {
@@ -293,6 +367,7 @@ class DeskWidget extends StatelessWidget {
       top: offset.dy,
       left: offset.dx,
       child: GestureDetector(
+        onLongPress: onLongPress,
         onTap: ontap,
         onPanUpdate: onPanUpdate,
         child: Container(
@@ -300,38 +375,10 @@ class DeskWidget extends StatelessWidget {
           width: 50,
           decoration: BoxDecoration(
               color: Colors.white,
-              border: Border.all(color: Colors.red, width: 2)),
+              border: Border.all(color: Colors.red, width: 0)),
           child: Image.asset("assets/images/desk.png"),
         ),
       ),
     );
   }
 }
-
-// class DraggableWidget extends StatelessWidget {
-//   final Offset offset;
-//
-//   DraggableWidget({Key key, this.offset}) : super(key: key);
-//   @override
-//   Widget build(BuildContext context) {
-//     return Draggable(
-//       childWhenDragging: Container(
-//         height: 50,
-//         width: 50,
-//         decoration: BoxDecoration(
-//             color: Colors.white,
-//             border: Border.all(color: Colors.red, width: 2)),
-//         child: Image.asset("assets/images/desk.png"),
-//       ),
-//       feedback: Container(
-//         height: 50,
-//         width: 50,
-//         decoration: BoxDecoration(
-//             color: Colors.white,
-//             border: Border.all(color: Colors.red, width: 2)),
-//         child: Image.asset("assets/images/desk.png"),
-//       ),
-//       onDragEnd: (details) {},
-//     );
-//   }
-// }
