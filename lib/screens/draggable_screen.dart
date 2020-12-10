@@ -7,20 +7,36 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:smart_building/bloc/drag/drag_bloc.dart';
 import 'package:smart_building/bloc/load_image/upload_image_bloc.dart';
+import 'package:smart_building/config/screen_utils.dart';
 
-class DraggableScreen extends StatelessWidget {
+class DraggableScreen extends StatefulWidget {
+  @override
+  _DraggableScreenState createState() => _DraggableScreenState();
+}
+
+class _DraggableScreenState extends State<DraggableScreen> {
   File _image;
+
   Size imageSize;
+
   Size deskSize;
+
   double maxWidth;
+
   double maxHeight;
+
   GlobalKey imageKey = GlobalKey();
+
   GlobalKey deskKey = GlobalKey();
+
   GlobalKey singleSensorKey = GlobalKey();
+
   GlobalKey sensorSetKey = GlobalKey();
 
   List<Offset> deskRateOffsets = [];
+
   List<Offset> deskRealOffsets = [];
+
   StreamController<Size> streamController = StreamController<Size>();
 
   getImageSize() {
@@ -40,11 +56,15 @@ class DraggableScreen extends StatelessWidget {
         .map((e) => Offset(e.dx * (maxWidth), e.dy * (maxHeight)))
         .toList();
   }
-
+  @override
+  void initState() {
+    super.initState();
+  }
   @override
   Widget build(BuildContext context) {
     var size = MediaQuery.of(context).size;
     developer.log("trigger build");
+    ScreenUtils.init(context);
     return StreamBuilder<Size>(
         stream: streamController.stream,
         builder: (context, snapshot) {
@@ -70,7 +90,7 @@ class DraggableScreen extends StatelessWidget {
             WidgetsBinding.instance.addPostFrameCallback((_) => getImageSize());
             return Scaffold(
                 body: Container(
-              padding: EdgeInsets.all(100),
+              padding: EdgeInsets.all(50),
               child: Column(children: [
                 Expanded(
                   key: imageKey,
@@ -83,10 +103,8 @@ class DraggableScreen extends StatelessWidget {
                               height: double.infinity,
                               width: size.width,
                               decoration: BoxDecoration(
-                                  border: Border.all(
-                                color: Colors.red,
-                                //width: 1
-                              )),
+                                  border:
+                                      Border.all(color: Colors.red, width: 2)),
                               child: Image.file(
                                 _image,
                                 fit: BoxFit.fill,
@@ -146,7 +164,7 @@ class DraggableScreen extends StatelessWidget {
                             child: Container(
                               child: Icon(
                                 Icons.image,
-                                size: 300,
+                                size: ScreenUtils().setWidth(300),
                               ),
                             ),
                           ),
@@ -157,6 +175,8 @@ class DraggableScreen extends StatelessWidget {
                   width: size.width,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.max,
                     children: [
                       /// Sensor set draggable
                       Column(
@@ -224,8 +244,8 @@ class DraggableScreen extends StatelessWidget {
                                   offset: details.offset,
                                   imageSize: imageSize,
                                   deskSize: deskSize,
-                                  marginLeft: 100,
-                                  marginTop: 100));
+                                  marginLeft: 50,
+                                  marginTop: 50));
                             },
                             dragAnchor: DragAnchor.child,
                           ),
@@ -315,32 +335,33 @@ class DraggableScreen extends StatelessWidget {
 
   Container buildDeskItem() {
     return Container(
-      // height: 50,
-      // width: 50,
-      // decoration: BoxDecoration(
-      //     color: Colors.white, border: Border.all(color: Colors.red, width: 1)),
+      width: 68,
+      height: 51,
+      decoration: BoxDecoration(
+          color: Colors.white, border: Border.all(color: Colors.red, width: 1)),
       child: Image.asset(
         "assets/images/desk.png",
+        // fit: BoxFit.cover,
       ),
     );
   }
 
   Container buildSingleSensorItem() {
     return Container(
-      // height: 50,
-      // width: 50,
+      height: 31,
+      width: 31,
       // decoration:
       //     BoxDecoration(border: Border.all(color: Colors.red, width: 1)),
       child: Image.asset(
-        "assets/images/singlesensor.png",
+        "assets/images/sensorsingle.png",
       ),
     );
   }
 
   Container buildSensorSetItem() {
     return Container(
-      // height: 50,
-      // width: 50,
+      width: 81,
+      height: 47,
       // decoration:
       //     BoxDecoration(border: Border.all(color: Colors.red, width: 1)),
       child: Image.asset("assets/images/sensorset.png"),
@@ -371,14 +392,14 @@ class DeskWidget extends StatelessWidget {
         onTap: ontap,
         onPanUpdate: onPanUpdate,
         child: Container(
-          // height: 50,
-          // width: 50,
-          // decoration: BoxDecoration(
-          //     color: Colors.white,
-          //     border: Border.all(color: Colors.red, width: 1)),
+          width: 68,
+          height: 51,
+          decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: Colors.red, width: 1)),
           child: Image.asset(
             "assets/images/desk.png",
-            //fit: BoxFit.cover,
+            // fit: BoxFit.cover,
           ),
         ),
       ),
